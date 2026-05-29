@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>รู้เสี่ยง รีบแจ้ง - ระบบแจ้งความเสี่ยง</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Sarabun', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#fef2f2',
+                            100: '#fee2e2',
+                            500: '#ef4444',
+                            600: '#dc2626',
+                            700: '#b91c1c',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f3f4f6;
+        }
+        input[type="file"]::file-selector-button {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            border: none;
+            background-color: #fee2e2;
+            color: #dc2626;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        input[type="file"]::file-selector-button:hover {
+            background-color: #fecaca;
+        }
+        .toast-message {
+            transition: opacity 0.3s ease-in-out;
+        }
+        /* Custom Scrollbar for Dropdown */
+        .dropdown-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        .dropdown-list::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="text-gray-800 antialiased min-h-screen pb-12">
+
+    <header class="bg-brand-600 text-white shadow-md sticky top-0 z-10">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <h1 class="text-2xl font-bold tracking-wide">รู้เสี่ยง รีบแจ้ง</h1>
+            </div>
+            <p class="text-brand-100 hidden sm:block text-sm">ระบบรายงานความเสี่ยงและความไม่ปลอดภัย</p>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 mt-8">
+        
+        <!-- Tab Navigation -->
+        <div class="flex space-x-1 mb-6 bg-white p-1 rounded-lg shadow-sm">
+            <button id="tab-form" onclick="switchTab('form')" class="flex-1 py-2 px-4 rounded-md font-medium text-brand-600 bg-brand-50 transition-colors duration-200">
+                📝 ลงข้อมูลแจ้งเหตุ
+            </button>
+            <button id="tab-list" onclick="switchTab('list')" class="flex-1 py-2 px-4 rounded-md font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors duration-200">
+                📋 รายการที่แจ้งแล้ว
+            </button>
+        </div>
+
+        <!-- Section: Form -->
+        <div id="section-form" class="bg-white rounded-xl shadow-md overflow-visible">
+            <div class="p-6 sm:p-8">
+                <h2 id="formTitle" class="text-xl font-semibold mb-6 text-gray-800 border-b pb-2 border-gray-200">รายละเอียดการแจ้งเหตุ</h2>
+                
+                <form id="riskForm" onsubmit="submitForm(event)" class="space-y-6">
+                    <input type="hidden" id="editReportId" value="">
+                    
+                    <!-- Section 1: Reporter Info -->
+                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                        <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">ข้อมูลผู้แจ้ง</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="reporterName" class="block text-sm font-medium text-gray-700 mb-1">ชื่อ-นามสกุลผู้แจ้ง <span class="text-red-500">*</span></label>
+                                <input type="text" id="reporterName" required placeholder="นายตัวอย่าง ใจดี"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-500 focus:border-brand-500 outline-none transition-shadow">
+                            </div>
+                            <div>
+                                <label for="employeeId" class="block text-sm font-medium text-gray-700 mb-1">รหัสพนักงาน <span class="text-red-500">*</span></label>
+                                <input type="text" id="employeeId" required placeholder="EMP12345"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-500 focus:border-brand-500 outline-none transition-shadow">
+                            </div>
+                            
+                            <!-- แผนก (Autocomplete) -->
+                            <div class="relative">
+                                <label for="department" class="block text-sm font-medium text-gray-700 mb-1">แผนก <span class="text-red-500">*</span></label>
+                                <input type="text" id="department" required placeholder="พิมพ์ค้นหา หรือ ระบุเอง..."
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-500 focus:border-brand-500 outline-none pr-10"
+                                    autocomplete="off" oninput="filterOptions('department')" onfocus="showOptions('department')">
+                                <ul id="list-department" class="dropdown-list absolute z-20 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto hidden mt-1"></ul>
+                            </div>
+
+                            <!-- สาขา (Autocomplete) -->
+                            <div class="relative">
+                                <label for="branch" class="block text-sm font-medium text-gray-700 mb-1">สาขา <span class="text-red-500">*</span></label>
+                                <input type="text" id="branch" required placeholder="พิมพ์ค้นหา หรือ ระบุเอง..."
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-500 focus:border-brand-500 outline-none pr-10"
+                                    autocomplete="off" oninput="filterOptions('branch')" onfocus="showOptions('branch')">
+                                <ul id="list-branch" class="dropdown-list absolute z-20 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto hidden mt-1"></ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 2: Risk Details -->
+                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                        <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">รายละเอียดความเสี่ยง</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label for="riskTitle" class="block text-sm font-medium text-gray-700 mb-1">หัวข้อความเสี่ยง/ปัญหา <span class="text-red-500">*</span></label>
+                                <input type="text" id="riskTitle" required placeholder="เช่น พบสายไฟชำรุดบริเวณทางเดิน"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-500 focus:border-brand-500 outline-none transition-shadow">
+                            </div>
+                            <div>
+                                <label for="riskDescription" class="block text-sm font-medium text-gray-700 mb-1">อธิบายรายละเอียด <span class="text-red-500">*</span></label>
+                                <textarea id="riskDescription" required rows="3" placeholder="ระบุตำแหน่งที่ชัดเจน และลักษณะของปัญหา..."
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-500 focus:border-brand-500 outline-none transition-shadow resize-none"></textarea>
+                            </div>
+
+                            <!-- เพิ่มช่อง: แนวทางการแก้ไข -->
+                            <div>
+                                <label for="solution" class="block text-sm font-medium text-gray-700 mb-1">แนวทางการแก้ไข <span class="text-red-500">*</span></label>
+                                <textarea id="solution" required rows="3" placeholder="อธิบายแนวทางการแก้ไขเบื้องต้น หรือวิธีป้องกัน..."
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-500 focus:border-brand-500 outline-none transition-shadow resize-none"></textarea>
+                            </div>
+
+                            <!-- Status & Responsibility -->
+                            <div class="bg-white p-4 rounded border border-gray-200 space-y-3">
+                                <label class="block text-sm font-medium text-gray-700">สถานะการแก้ไข/ผู้รับผิดชอบ <span class="text-red-500">*</span></label>
+                                <div class="flex flex-col sm:flex-row gap-4">
+                                    <label class="flex items-center space-x-2 cursor-pointer">
+                                        <input type="radio" name="status" value="resolved" onchange="toggleResponsibility('resolved')" class="w-4 h-4 text-brand-600 focus:ring-brand-500 border-gray-300">
+                                        <span class="text-sm text-gray-700">ดำเนินการแก้ไขได้ด้วยตนเอง</span>
+                                    </label>
+                                    <label class="flex items-center space-x-2 cursor-pointer">
+                                        <input type="radio" name="status" value="pending" onchange="toggleResponsibility('pending')" class="w-4 h-4 text-brand-600 focus:ring-brand-500 border-gray-300" checked>
+                                        <span class="text-sm text-gray-700">ให้แผนก/ผู้รับผิดชอบแก้ไข</span>
+                                    </label>
+                                </div>
+                                <div id="assigneeContainer" class="mt-2">
+                                    <input type="text" id="assignee" placeholder="ระบุชื่อแผนก หรือ ผู้รับผิดชอบ (เช่น ฝ่ายซ่อมบำรุง)"
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-500 focus:border-brand-500 outline-none transition-shadow">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 3: Photos -->
+                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                        <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">ภาพประกอบ (รองรับไฟล์รูปภาพเท่านั้น)</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-100 transition-colors">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">📸 รูปก่อนแก้ไข <span class="text-red-500">*</span></label>
+                                <input type="file" id="photoBefore" accept="image/*" class="w-full text-sm text-gray-500" required>
+                                <p class="text-xs text-gray-400 mt-2">จำเป็นต้องแนบ</p>
+                            </div>
+                            <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-100 transition-colors">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">✨ รูปหลังแก้ไข</label>
+                                <input type="file" id="photoAfter" accept="image/*" class="w-full text-sm text-gray-500">
+                                <p class="text-xs text-gray-400 mt-2">แนบเมื่อแก้ไขแล้ว</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200">
+                        <div id="statusMessage" class="text-sm font-medium hidden"></div>
+                        <button type="submit" id="submitBtn" class="bg-brand-600 hover:bg-brand-700 text-white px-6 py-2.5 rounded-md font-medium transition-colors shadow-sm flex items-center">
+                            <span id="submitText">บันทึกข้อมูลแจ้งเหตุ</span>
+                            <svg id="loadingSpinner" class="animate-spin ml-2 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Section: List -->
+        <div id="section-list" class="hidden">
+            
+            <!-- Login / Filter Panel -->
+            <div class="bg-white p-6 rounded-xl shadow-md mb-6 border border-gray-100">
+                <h2 class="text-lg font-semibold mb-4 text-gray-800">ระบบเข้าถึงข้อมูล</h2>
+                <div class="flex flex-col sm:flex-row gap-4 items-end">
+                    <div class="w-full sm:w-1/3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">เลือกประเภทผู้ใช้งาน</label>
+                        <select id="userRole" onchange="toggleAuthInput()" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-500 focus:border-brand-500 outline-none">
+                            <option value="public">บุคคลทั่วไป (ดูข้อมูลสาธารณะ)</option>
+                            <option value="user">ผู้แจ้งเหตุ (ดู/แก้ไขรายการตนเอง)</option>
+                            <option value="admin">ผู้ดูแลระบบ (ตรวจสอบ/อนุมัติ)</option>
+                        </select>
+                    </div>
+                    <div class="w-full sm:w-1/3 hidden" id="authInputContainer">
+                        <label id="authLabel" class="block text-sm font-medium text-gray-700 mb-1">รหัสผ่าน</label>
+                        <input type="password" id="authKey" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-brand-500 outline-none">
+                    </div>
+                    <div class="w-full sm:w-1/3">
+                        <button onclick="loadReports()" class="w-full bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-md font-medium transition-colors">
+                            ดึงข้อมูล
+                        </button>
+                    </div>
+                </div>
+                <div id="loginMessage" class="mt-3 text-sm font-medium text-red-600 hidden"></div>
+            </div>
+
+            <!-- Custom Message UI as alternative to Alert -->
+            <div id="customAlert" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+                <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full mx-4 text-center">
+                    <p id="alertMessage" class="text-gray-800 font-medium mb-6"></p>
+                    <button onclick="closeAlert()" class="bg-brand-600 hover:bg-brand-700 text-white px-6 py-2 rounded-md transition-colors w-full">ตกลง</button>
+                </div>
+            </div>
+
+            <!-- List Display -->
+            <div id="reportsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Data will be populated here -->
+                <div class="col-span-full text-center py-12 text-gray-500 bg-white rounded-xl border border-dashed border-gray-300">
+                    กรุณากด "ดึงข้อมูล" เพื่อดูรายการ
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // =========================================================
+        // การตั้งค่า: URL ล่าสุดของ Web App จาก Google Apps Script
+        // =========================================================
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw4a8NrrGFMk1ekM-T0Y5aS8mTgOHmHP9KQtB1IRTSP4r4LqbccV8e2agJTnt1My8mI/exec";
+        
+        let loadedDataOptions = { departments: [], branches: [] };
+        let allReports = [];
+
+        window.onload = () => {
+            fetchOptions();
+            // Hide custom dropdowns if clicked outside
+            document.addEventListener('click', function(e) {
+                if(e.target.id !== 'department') document.getElementById('list-department').classList.add('hidden');
+                if(e.target.id !== 'branch') document.getElementById('list-branch').classList.add('hidden');
+            });
+        };
+
+        function showAlert(msg) {
+            document.getElementById('alertMessage').innerText = msg;
+            document.getElementById('customAlert').classList.remove('hidden');
+        }
+
+        function closeAlert() {
+            document.getElementById('customAlert').classList.add('hidden');
+        }
+
+        function switchTab(tab) {
+            const btnForm = document.getElementById('tab-form');
+            const btnList = document.getElementById('tab-list');
+            const secForm = document.getElementById('section-form');
+            const secList = document.getElementById('section-list');
+
+            if (tab === 'form') {
+                btnForm.className = "flex-1 py-2 px-4 rounded-md font-medium text-brand-600 bg-brand-50 transition-colors duration-200";
+                btnList.className = "flex-1 py-2 px-4 rounded-md font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors duration-200";
+                secForm.classList.remove('hidden');
+                secList.classList.add('hidden');
+            } else {
+                btnList.className = "flex-1 py-2 px-4 rounded-md font-medium text-brand-600 bg-brand-50 transition-colors duration-200";
+                btnForm.className = "flex-1 py-2 px-4 rounded-md font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors duration-200";
+                secList.classList.remove('hidden');
+                secForm.classList.add('hidden');
+                if (allReports.length === 0) loadReports();
+            }
+        }
+
+        function toggleResponsibility(status) {
+            const assigneeInput = document.getElementById('assignee');
+            if (status === 'resolved') {
+                assigneeInput.value = 'ดำเนินการแก้ไขด้วยตนเอง';
+                assigneeInput.readOnly = true;
+                assigneeInput.classList.add('bg-gray-100', 'text-gray-500');
+            } else {
+                if(assigneeInput.value === 'ดำเนินการแก้ไขด้วยตนเอง') assigneeInput.value = '';
+                assigneeInput.readOnly = false;
+                assigneeInput.classList.remove('bg-gray-100', 'text-gray-500');
+            }
+        }
+
+        function toggleAuthInput() {
+            const role = document.getElementById('userRole').value;
+            const container = document.getElementById('authInputContainer');
+            const label = document.getElementById('authLabel');
+            const input = document.getElementById('authKey');
+            
+            input.value = ''; // clear
+            
+            if (role === 'public') {
+                container.classList.add('hidden');
+                input.type = 'text';
+            } else if (role === 'user') {
+                container.classList.remove('hidden');
+                label.innerText = 'รหัสพนักงาน (เพื่อดูของตนเอง)';
+                input.type = 'text';
+            } else if (role === 'admin') {
+                container.classList.remove('hidden');
+                label.innerText = 'รหัสผ่าน Admin (GBH)';
+                input.type = 'password';
+            }
+        }
+
+        // Fetch Departments and Branches from backend
+        async function fetchOptions() {
+            try {
+                const res = await fetch(SCRIPT_URL + '?action=getOptions', { 
+                    method: 'GET',
+                    redirect: "follow" 
+                });
+                
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
+                
+                const data = await res.json();
+                
+                if (data.error) {
+                    console.error("Backend Error:", data.error);
+                    return;
+                }
+                
+                if(data.departments) loadedDataOptions.departments = data.departments;
+                if(data.branches) loadedDataOptions.branches = data.branches;
+                console.log("Loaded options:", loadedDataOptions);
+            } catch(e) {
+                console.warn("Failed to load options from Google Script (ผู้ใช้ยังสามารถพิมพ์ระบุเองได้):", e);
+            }
+        }
+
+        function showOptions(type) {
+            renderList(type, document.getElementById(type).value);
+            document.getElementById(`list-${type}`).classList.remove('hidden');
+        }
+
+        function filterOptions(type) {
+            renderList(type, document.getElementById(type).value);
+            document.getElementById(`list-${type}`).classList.remove('hidden');
+        }
+
+        function renderList(type, filterText) {
+            const ul = document.getElementById(`list-${type}`);
+            ul.innerHTML = '';
+            const options = loadedDataOptions[type === 'department' ? 'departments' : 'branches'];
+            
+            const filtered = options.filter(opt => opt.toLowerCase().includes(filterText.toLowerCase()));
+            
+            if(filtered.length === 0) {
+                ul.innerHTML = `<li class="px-4 py-2 text-gray-500 text-sm">พิมพ์เพื่อระบุข้อมูลใหม่...</li>`;
+                return;
+            }
+
+            filtered.forEach(opt => {
+                const li = document.createElement('li');
+                li.className = "px-4 py-2 hover:bg-brand-50 cursor-pointer text-sm text-gray-700 transition-colors";
+                li.textContent = opt;
+                li.onmousedown = function() { // use mousedown to fire before input blur
+                    document.getElementById(type).value = opt;
+                    ul.classList.add('hidden');
+                };
+                ul.appendChild(li);
+            });
+        }
+
+        // Compress Image using Canvas API before uploading
+        function compressImage(file, callback) {
+            if (!file) {
+                callback(null);
+                return;
+            }
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = function(event) {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 1000;
+                    const MAX_HEIGHT = 1000;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // Compress to WebP or JPEG, quality 0.7
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7); 
+                    callback(dataUrl);
+                }
+            }
+        }
+
+        function setFormStatus(isLoading, msg = "", isError = false) {
+            const btn = document.getElementById('submitBtn');
+            const text = document.getElementById('submitText');
+            const spinner = document.getElementById('loadingSpinner');
+            const msgEl = document.getElementById('statusMessage');
+
+            if (isLoading) {
+                btn.disabled = true;
+                btn.classList.add('opacity-75', 'cursor-not-allowed');
+                spinner.classList.remove('hidden');
+                text.innerText = "กำลังบันทึก...";
+                msgEl.classList.add('hidden');
+            } else {
+                btn.disabled = false;
+                btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                spinner.classList.add('hidden');
+                text.innerText = document.getElementById('editReportId').value ? "อัปเดตข้อมูล" : "บันทึกข้อมูลแจ้งเหตุ";
+                
+                if (msg) {
+                    msgEl.innerText = msg;
+                    msgEl.className = `text-sm font-medium ${isError ? 'text-red-600' : 'text-green-600'} block`;
+                    setTimeout(() => msgEl.classList.add('hidden'), 5000);
+                }
+            }
+        }
+
+        async function submitForm(e) {
+            e.preventDefault();
+            
+            const editId = document.getElementById('editReportId').value;
+            const isEdit = editId !== "";
+            const status = document.querySelector('input[name="status"]:checked').value;
+            const assignee = document.getElementById('assignee').value;
+            
+            if (status === 'pending' && !assignee) {
+                showAlert("กรุณาระบุชื่อแผนก หรือ ผู้รับผิดชอบ");
+                return;
+            }
+
+            setFormStatus(true);
+
+            // Fetch files
+            const photoBeforeFile = document.getElementById('photoBefore').files[0];
+            const photoAfterFile = document.getElementById('photoAfter').files[0];
+
+            if (!isEdit && !photoBeforeFile) {
+                showAlert("กรุณาแนบรูปก่อนแก้ไข");
+                setFormStatus(false);
+                return;
+            }
+
+            compressImage(photoBeforeFile, (beforeBase64) => {
+                compressImage(photoAfterFile, async (afterBase64) => {
+                    
+                    // เตรียมข้อมูล
+                    const payload = {
+                        action: isEdit ? 'update' : 'create',
+                        id: isEdit ? editId : "R" + Date.now(), // Generate ID
+                        date: new Date().toLocaleString('th-TH'),
+                        reporterName: document.getElementById('reporterName').value,
+                        employeeId: document.getElementById('employeeId').value,
+                        department: document.getElementById('department').value,
+                        branch: document.getElementById('branch').value,
+                        riskTitle: document.getElementById('riskTitle').value,
+                        riskDescription: document.getElementById('riskDescription').value,
+                        solution: document.getElementById('solution').value,
+                        status: status,
+                        assignee: assignee,
+                        photoBefore: beforeBase64 || "",
+                        photoAfter: afterBase64 || ""
+                    };
+
+                    try {
+                        const response = await fetch(SCRIPT_URL, {
+                            method: "POST",
+                            body: JSON.stringify(payload)
+                        });
+                        const result = await response.json();
+
+                        if (result.status === "success") {
+                            setFormStatus(false, "บันทึกข้อมูลสำเร็จ!", false);
+                            document.getElementById('riskForm').reset();
+                            document.getElementById('editReportId').value = "";
+                            document.getElementById('formTitle').innerText = "รายละเอียดการแจ้งเหตุ";
+                            toggleResponsibility('pending');
+                            
+                            // Remove required from file inputs if it was edit mode
+                            document.getElementById('photoBefore').required = true;
+                            
+                            showAlert("ข้อมูลของคุณถูกส่งเข้าระบบเรียบร้อยแล้ว");
+                            
+                            // Refresh list if it was loaded
+                            allReports = [];
+                        } else {
+                            throw new Error(result.message);
+                        }
+                    } catch (error) {
+                        setFormStatus(false, "เกิดข้อผิดพลาด: " + error.message, true);
+                        showAlert("เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง");
+                    }
+                });
+            });
+        }
+
+        async function loadReports() {
+            const role = document.getElementById('userRole').value;
+            const authKey = document.getElementById('authKey').value;
+            const msgEl = document.getElementById('loginMessage');
+            const container = document.getElementById('reportsContainer');
+            
+            msgEl.classList.add('hidden');
+
+            if (role === 'admin' && authKey !== 'GBH') {
+                msgEl.innerText = "รหัสแอดมินไม่ถูกต้อง";
+                msgEl.classList.remove('hidden');
+                return;
+            }
+            if (role === 'user' && authKey.trim() === '') {
+                msgEl.innerText = "กรุณากรอกรหัสพนักงาน";
+                msgEl.classList.remove('hidden');
+                return;
+            }
+
+            container.innerHTML = `<div class="col-span-full text-center py-12 text-gray-500"><svg class="animate-spin inline-block h-8 w-8 text-brand-600 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><br>กำลังดึงข้อมูล...</div>`;
+
+            try {
+                // Fetch reports list
+                const res = await fetch(SCRIPT_URL + '?action=getReports', { redirect: "follow" });
+                const data = await res.json();
+                
+                if (data.reports) {
+                    allReports = data.reports;
+                } else {
+                    allReports = [];
+                }
+                
+                renderReports(role, authKey);
+
+            } catch (error) {
+                container.innerHTML = `<div class="col-span-full text-center py-12 text-red-500 bg-red-50 rounded-xl border border-red-200">ไม่สามารถเชื่อมต่อฐานข้อมูลได้ กรุณาตรวจสอบ URL หรือสิทธิ์การเข้าถึง</div>`;
+                console.error(error);
+            }
+        }
+
+        function renderReports(role, authKey) {
+            const container = document.getElementById('reportsContainer');
+            container.innerHTML = '';
+
+            // Filter logic based on user roles
+            let displayList = [];
+            
+            if (role === 'admin') {
+                displayList = allReports; // Admin sees all
+            } else if (role === 'user') {
+                displayList = allReports.filter(r => r.publicStatus.includes('Public') || r.employeeId === authKey);
+            } else {
+                displayList = allReports.filter(r => r.publicStatus.includes('Public'));
+            }
+
+            if (displayList.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center py-12 text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-300">ไม่พบข้อมูลการแจ้งเหตุ</div>`;
+                return;
+            }
+
+            displayList.reverse().forEach(report => {
+                const isOwner = (role === 'user' && report.employeeId === authKey) || role === 'admin';
+                const isPendingPublic = !report.publicStatus.includes('Public');
+                
+                const statusColor = report.statusText.includes('รอดำเนินการ') ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 'bg-green-100 text-green-800 border-green-200';
+                
+                let html = `
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow flex flex-col h-full">
+                    <div class="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-semibold text-gray-500 block mb-1">${report.date}</span>
+                            <h3 class="font-bold text-gray-800 text-lg">${report.riskTitle}</h3>
+                        </div>
+                        <span class="px-2 py-1 text-xs font-medium rounded-full ${statusColor} border">${report.statusText}</span>
+                    </div>
+                    
+                    <div class="p-4 flex-grow space-y-3 text-sm text-gray-600">
+                        <div class="bg-gray-50 p-3 rounded-md border border-gray-100">
+                            <span class="font-bold text-gray-700 block mb-1">ปัญหา/รายละเอียด:</span>
+                            ${report.riskDescription}
+                        </div>
+                        <div class="bg-blue-50 p-3 rounded-md border border-blue-100 text-blue-800">
+                            <span class="font-bold block mb-1">แนวทางการแก้ไข:</span>
+                            ${report.solution || '-'}
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 mt-2">
+                            <div><span class="font-medium text-gray-700">ผู้แจ้ง:</span> ${report.reporterName}</div>
+                            <div><span class="font-medium text-gray-700">แผนก:</span> ${report.department}</div>
+                            <div><span class="font-medium text-gray-700">ผู้รับผิดชอบ:</span> ${report.assignee || '-'}</div>
+                            <div>
+                                <span class="font-medium text-gray-700">การมองเห็น:</span> 
+                                <span class="${isPendingPublic ? 'text-red-500' : 'text-green-500'} font-medium">
+                                    ${isPendingPublic ? '🔒 ส่วนตัว' : '🌍 สาธารณะ'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Photos -->
+                        <div class="flex gap-2 mt-4 pt-4 border-t border-gray-100">
+                            ${report.photoBefore ? `<a href="${report.photoBefore}" target="_blank" class="flex-1 text-center bg-gray-100 hover:bg-gray-200 py-2 rounded text-brand-600 font-medium transition-colors text-xs">📸 รูปก่อนแก้</a>` : ''}
+                            ${report.photoAfter ? `<a href="${report.photoAfter}" target="_blank" class="flex-1 text-center bg-gray-100 hover:bg-gray-200 py-2 rounded text-green-600 font-medium transition-colors text-xs">✨ รูปหลังแก้</a>` : '<div class="flex-1 text-center bg-gray-50 py-2 rounded text-gray-400 text-xs border border-dashed border-gray-200">ยังไม่มีรูปหลังแก้</div>'}
+                        </div>
+                    </div>
+                `;
+
+                // Actions Footer
+                if (isOwner || role === 'admin') {
+                    html += `<div class="p-3 bg-gray-50 border-t border-gray-100 flex gap-2">`;
+                    
+                    if (isOwner) {
+                        // Edit Data Stringify safely
+                        const safeReport = JSON.stringify(report).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                        html += `<button onclick="editReport('${safeReport}')" class="flex-1 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded shadow-sm font-medium transition-colors">✏️ แก้ไข/อัปเดต</button>`;
+                    }
+                    
+                    if (role === 'admin' && isPendingPublic) {
+                        html += `<button onclick="approveReport('${report.id}')" class="flex-1 py-1.5 text-sm bg-brand-600 border border-brand-600 text-white hover:bg-brand-700 rounded shadow-sm font-medium transition-colors">👁️ อนุมัติเผยแพร่</button>`;
+                    }
+                    html += `</div>`;
+                }
+
+                html += `</div>`;
+                container.innerHTML += html;
+            });
+        }
+
+        // Action Functions
+        function editReport(reportStr) {
+            const r = JSON.parse(reportStr.replace(/&quot;/g, '"'));
+            
+            switchTab('form');
+            document.getElementById('formTitle').innerText = `✏️ อัปเดตข้อมูลแจ้งเหตุ: ${r.id}`;
+            document.getElementById('editReportId').value = r.id;
+            
+            // Prefill Data
+            document.getElementById('reporterName').value = r.reporterName;
+            document.getElementById('employeeId').value = r.employeeId;
+            document.getElementById('department').value = r.department;
+            document.getElementById('branch').value = r.branch;
+            document.getElementById('riskTitle').value = r.riskTitle;
+            document.getElementById('riskDescription').value = r.riskDescription;
+            document.getElementById('solution').value = r.solution || '';
+            document.getElementById('assignee').value = r.assignee;
+            
+            const isResolved = r.statusText.includes('ดำเนินการแก้ไขได้ด้วยตนเอง');
+            document.querySelector(`input[name="status"][value="${isResolved ? 'resolved' : 'pending'}"]`).checked = true;
+            toggleResponsibility(isResolved ? 'resolved' : 'pending');
+
+            // Files cannot be prefilled for security, make Before optional on edit
+            document.getElementById('photoBefore').required = false;
+            
+            window.scrollTo(0, 0);
+            showAlert("กรุณาแก้ไขข้อมูลและแนบรูปภาพใหม่หากต้องการ จากนั้นกดบันทึก");
+        }
+
+        async function approveReport(id) {
+            if(!confirm("ต้องการอนุมัติให้รายการนี้แสดงเป็นสาธารณะใช่หรือไม่?")) return;
+            
+            try {
+                const res = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'approve', id: id })
+                });
+                const result = await res.json();
+                if(result.status === 'success') {
+                    showAlert("อนุมัติสำเร็จ!");
+                    loadReports(); // Refresh
+                } else {
+                    showAlert("เกิดข้อผิดพลาด: " + result.message);
+                }
+            } catch(e) {
+                showAlert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+            }
+        }
+    </script>
+</body>
+</html>
